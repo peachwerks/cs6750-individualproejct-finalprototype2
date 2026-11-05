@@ -17,6 +17,15 @@
   var KEY = "parking-app-proto";
   var state = load() || fresh();
   state.weak = false;
+
+  // returning.html sets <body data-start="returning">: always open on the "Welcome back" screen
+  var START = document.body.getAttribute("data-start") ||
+    (/\/returning(\.html)?\/?$/.test(location.pathname) || location.hash === "#returning" ? "returning" : "");
+  function applyStart() {
+    if (START !== "returning") return;
+    state.profile = Object.assign({}, DEMO); state.session = null; state.screen = "register";
+  }
+  applyStart();
   var draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false };
   var errors = {};
   var confirmEnd = false;
@@ -245,8 +254,10 @@
       '<div class="ios-input" aria-hidden="true"><span>Text Message</span></div>';
   }
 
-  function bookmarkUrl() {
-    return /^https?:/.test(location.protocol) ? location.host + location.pathname.replace(/index\.html$/, "") : "parking-app.vercel.app/";
+  function bookmarkUrl(target) {
+    var dir = /^https?:/.test(location.protocol) ? location.host + location.pathname.replace(/[^\/]*$/, "") : "parking-app.vercel.app/";
+    var returning = target ? target === "returning" : START === "returning";
+    return dir + (returning ? "returning.html" : "");
   }
   function viewBookmark() {
     return '<div class="ios-nav"><button class="ios-link" type="button" data-action="back">Cancel</button>' +
@@ -296,7 +307,7 @@
       '<div class="ios-group bm-list">' +
         '<div class="ios-cell">' + folder + '<span class="bm-loc">Favorites</span><span class="bm-chev" aria-hidden="true">›</span></div>' +
         '<button type="button" class="ios-cell bm-row" data-action="openBookmark">' + bmark +
-          '<span class="bm-text"><span class="bm-title">Parking App</span><span class="bm-sub">' + esc(bookmarkUrl()) + '</span></span></button>' +
+          '<span class="bm-text"><span class="bm-title">Parking App</span><span class="bm-sub">' + esc(bookmarkUrl(state.bmTarget)) + '</span></span></button>' +
       '</div>' +
       '<p class="ios-foot">Tap a bookmark to open it.</p>';
   }
@@ -472,7 +483,7 @@
     switch (cmd) {
       case "reset":
         try { localStorage.removeItem(KEY); } catch (e) {}
-        state = fresh(); base = Date.now();
+        state = fresh(); base = Date.now(); applyStart();
         draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false }; errors = {};
         render(); break;
       case "bmNew":
