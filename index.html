@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Parking App Prototype</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="styles.css?b=0">
+<link rel="stylesheet" href="styles.css?b=1">
 </head>
 <body>
 <div class="stage">
   <div class="phone" id="phone">
-    <div class="notif" id="notif" role="button" tabindex="0" aria-label="Open text message" hidden>
+        <div class="notif" id="notif" role="button" tabindex="0" aria-label="Open text message" hidden>
       <div class="notif-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="24" height="24"><path fill="#fff" d="M12 3.5c-5 0-9 3.3-9 7.4 0 2.3 1.3 4.4 3.3 5.8-.2 1.3-.8 2.5-1.8 3.4 1.9 0 3.6-.7 4.8-1.8.9.2 1.8.3 2.7.3 5 0 9-3.3 9-7.4S17 3.5 12 3.5z"/></svg>
       </div>
@@ -29,7 +29,32 @@
     </div>
     <div class="proto-tag">Prototype · no real payments · no data saved</div>
   </div>
+
+  <aside class="wizard" id="wizard" aria-label="Wizard controls">
+    <div class="wiz-head">
+      <strong>Wizard controls</strong>
+      <button type="button" class="wiz-close" data-wiz="hide" aria-label="Hide wizard">×</button>
+    </div>
+    <p class="wiz-note">Hidden from participants. Press <kbd>W</kbd> or triple-tap the logo to show or hide.</p>
+    <div class="wiz-clock">Simulated time: <b id="wizTime">–</b><br><span id="wizSession">No active session</span></div>
+
+    <div class="wiz-group"><span>Storylines</span>
+      <button type="button" data-wiz="reset">Reset demo</button>
+      <button type="button" data-wiz="arriveNew">Arrive as new user</button>
+      <button type="button" data-wiz="returning">Arrive as returning user</button>
+      <button type="button" data-wiz="lock">Arrive as Auto user</button>
+    </div>
+    <div class="wiz-group"><span>System Actions</span>
+      <button type="button" data-wiz="scan">Plate scan succeeds</button>
+      <button type="button" data-wiz="msgEnter">Message Auto car enters lot</button>
+      <button type="button" data-wiz="msgLeave">Message Auto car leaves lot</button>
+    </div>
+    <div class="wiz-group"><span>Screens</span>
+      <button type="button" data-wiz="bmNew">Bookmark - new user</button>
+      <button type="button" data-wiz="bmReturning">Bookmark - returning user</button>
+    </div>
+  </aside>
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=1"></script>
 </body>
 </html>
