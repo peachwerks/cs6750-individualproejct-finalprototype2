@@ -122,7 +122,7 @@
         '<span class="rates"><strong>' + (over ? "You owe $" + charge(used) + " so far" : words(left) + " remaining") + '</strong><br>' +
           (over ? "$" + TIER1 + " up to 5 hours and $" + TIER2 + " up to 12 hours" : after) + '</span></div>';
     }
-    return '<div class="free"><span class="lbl">Register now and park free until</span>' +
+    return '<div class="free reg"><span class="lbl">Register now and park free until</span>' +
       '<span class="time" id="freeNow">' + fmt(freeUntil(start)) + '</span>' +
       '<span class="rates">' + rates + '</span></div>';
   }
@@ -138,6 +138,8 @@
       '<div class="card"><div class="step-head"><span class="num">1</span><h2>Your vehicle</h2></div>' +
         '<div class="field"><label for="plate">License plate</label><div class="row">' +
           '<div class="plate-wrap"><input type="text" id="plate" autocomplete="off" autocapitalize="characters" maxlength="8" placeholder="e.g. ABC1234" value="' + esc(draft.plate) + '"' + (errors.plate ? ' class="bad" aria-invalid="true"' : "") + '>' +
+          // Hidden file input: on phones, capture="environment" opens the rear camera directly
+          '<input type="file" id="plateCam" accept="image/*" capture="environment" hidden>' +
           '<button type="button" class="cam-btn" data-action="scan" aria-label="Scan plate with camera (optional)" title="Scan plate (optional)">' +
             '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
           '</button></div>' +
@@ -156,13 +158,13 @@
 
       '<div class="card"><div class="step-head"><span class="num">3</span><h2>Next time</h2></div>' +
         '<label class="check"><input type="checkbox" id="remember"' + (draft.remember ? " checked" : "") + '><span>Remember me on this phone<small>Next visit is one tap.</small></span></label>' +
-        '<label class="check"><input type="checkbox" id="auto"' + (draft.auto ? " checked" : "") + '><span>Sign me up for AUTO<small>Skip this form. Cameras check you in and text you.</small></span></label>' +
+        '<label class="check"><input type="checkbox" id="auto"' + (draft.auto ? " checked" : "") + '><span>Sign me up for AUTO<small>Skip this form next time. Cameras in the parking lot automatically register you to park.</small></span></label>' +
         '<button class="link" type="button" data-action="howAuto">How AUTO works</button></div>' +
 
       '<button class="btn" type="button" data-action="register" id="regBtn">Register to park</button>' +
       '<p class="note">No card needed now. You only pay if you stay past the free time.</p>';
 
-    return '<h1>Register your parking</h1>' + freeBanner(now(), false) + welcome + form;
+    return freeBanner(now(), false) + welcome + form;
   }
 
   function viewConfirm() {
@@ -308,6 +310,7 @@
     $("phone").classList.toggle("msg-app", state.screen === "messages" || sheet);
     $("phone").classList.toggle("sheet-app", sheet);
     $("phone").classList.toggle("lock-app", state.screen === "lock");
+    $("phone").classList.toggle("reg-screen", state.screen === "register");
     renderChrome();
   }
   function renderChrome() {
@@ -403,8 +406,9 @@
         case "forget": state.profile = null; save(); render(); break;
         case "swapContact": draft.contactType = draft.contactType === "phone" ? "email" : "phone"; draft.contact = ""; errors.contact = null; render(); break;
         case "scan":
-          a.classList.add("scanning"); $("plate").value = ""; $("plate").placeholder = "Scanning plate…";
-          break; // the wizard completes the scan
+          // Opens the phone's camera. The photo is never read, uploaded, or saved.
+          if ($("plateCam")) $("plateCam").click();
+          break;
         case "howAuto": prev = state.screen; go("auto"); break;
         case "messages": prev = state.screen === "messages" ? prev : state.screen; state.unread = 0; go("messages"); break;
         case "back":
@@ -427,6 +431,21 @@
     }
     var w = e.target.closest("[data-wiz]");
     if (w) wizard(w.getAttribute("data-wiz"));
+  });
+
+  // After a photo is taken, pretend to read the plate (Wizard of Oz: no real recognition)
+  document.addEventListener("change", function (e) {
+    if (e.target.id !== "plateCam" || !e.target.files || !e.target.files.length) return;
+    e.target.value = ""; // drop the photo immediately
+    readForm();
+    var btn = document.querySelector(".cam-btn"), field = $("plate");
+    if (btn) btn.classList.add("scanning");
+    if (field) { field.value = ""; field.placeholder = "Reading plate…"; }
+    setTimeout(function () {
+      if (state.screen !== "register" || !$("plate")) return;
+      readForm(); draft.plate = DEMO.plate; draft.state = DEMO.state; errors.plate = null;
+      render(); toast("Plate read: " + DEMO.plate);
+    }, 1500);
   });
 
   function openMessages() {
