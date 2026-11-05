@@ -45,7 +45,8 @@ button, input, select { font: inherit; color: inherit; }
 .msgbtn { position: relative; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
 .badge { position: absolute; top: -6px; right: -6px; background: var(--danger); color: #fff; border-radius: 999px; font-size: 11px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 5px; }
 
-.screen { flex: 1; overflow-y: auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 14px; outline: none; }
+.scroller { flex: 1; overflow-y: auto; }
+.screen { padding: 16px 16px 52px; display: flex; flex-direction: column; gap: 14px; outline: none; }
 .proto-tag { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--muted); pointer-events: none; }
 
 h1 { font-size: 22px; margin: 2px 0 0; line-height: 1.2; }
@@ -81,6 +82,8 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--blue)
 input.bad { border-color: var(--danger); }
 .err { color: var(--danger); font-size: 12px; }
 .hint { font-size: 12px; color: var(--muted); }
+.label-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.label-row .link { align-self: auto; }
 .link { background: none; border: 0; padding: 0; color: var(--blue); font-size: 13px; text-decoration: underline; cursor: pointer; align-self: flex-start; }
 
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
@@ -116,10 +119,52 @@ ol.steps li { display: flex; gap: 12px; align-items: flex-start; }
 
 .toast { position: absolute; left: 16px; right: 16px; bottom: 26px; background: #222; color: #fff; border-radius: 10px; padding: 10px 14px; font-size: 14px; text-align: center; z-index: 20; }
 
-.notif { position: absolute; top: 40px; left: 10px; right: 10px; z-index: 30; background: rgba(250,250,252,.97); border-radius: 16px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); cursor: pointer; animation: drop .35s ease-out; }
-.notif-app { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
-.notif-text { font-size: 14px; margin-top: 2px; }
-@keyframes drop { from { transform: translateY(-20px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* iOS-style banner notification */
+.notif {
+  position: absolute; top: 44px; left: 8px; right: 8px; z-index: 30;
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 14px 12px 11px; border-radius: 22px; cursor: pointer;
+  background: rgba(245,245,247,.82);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: 0 6px 24px rgba(0,0,0,.16), 0 0 0 .5px rgba(0,0,0,.06);
+  font-family: -apple-system, "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  animation: drop .4s cubic-bezier(.2,.9,.3,1.2);
+}
+.notif-icon { width: 38px; height: 38px; border-radius: 9px; flex: none; display: grid; place-items: center; background: linear-gradient(180deg, #67f27d 0%, #20c43b 100%); }
+.notif-body { flex: 1; min-width: 0; }
+.notif-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.notif-top strong { font-size: 15px; font-weight: 600; color: #000; }
+.notif-top span { font-size: 13px; color: rgba(60,60,67,.6); }
+.notif-text { font-size: 15px; line-height: 1.3; color: #000; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+@keyframes drop { from { transform: translateY(-120%); } to { transform: none; } }
+
+/* Messages app (shown when a notification is tapped) */
+.phone.msg-app { background: #fff; }
+.phone.msg-app .topbar, .phone.msg-app .proto-tag { display: none; }
+.phone.msg-app .screen { padding: 0; gap: 0; min-height: 100%; font-family: -apple-system, "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+.ios-head { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 16px 10px; border-bottom: .5px solid #d1d1d6; background: rgba(249,249,249,.94); }
+.ios-back { position: absolute; left: 6px; top: 14px; background: none; border: 0; color: #007aff; font-size: 17px; cursor: pointer; display: flex; align-items: center; gap: 2px; padding: 4px 8px; }
+.ios-back b { font-size: 26px; font-weight: 400; line-height: 0; margin-top: -3px; }
+.ios-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(180deg, #a5abb8, #858b98); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 20px; }
+.ios-name { font-size: 12px; color: #000; }
+.ios-thread { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 14px 12px 12px; }
+.ios-stamp { text-align: center; font-size: 11px; color: #8e8e93; margin: 8px 0 4px; }
+.ios-stamp b { font-weight: 600; }
+.ios-bubble { align-self: flex-start; max-width: 78%; background: #e9e9eb; color: #000; font-size: 16px; line-height: 1.3; padding: 8px 12px; border-radius: 18px; position: relative; }
+.ios-bubble.tail::before { content: ""; position: absolute; left: -6px; bottom: 0; width: 16px; height: 16px; background: #e9e9eb; border-bottom-right-radius: 14px; }
+.ios-bubble.tail::after { content: ""; position: absolute; left: -10px; bottom: 0; width: 10px; height: 16px; background: #fff; border-bottom-right-radius: 10px; }
+.ios-empty { text-align: center; color: #8e8e93; font-size: 14px; margin-top: 40px; }
+.ios-input { display: flex; align-items: center; gap: 8px; padding: 8px 12px 20px; border-top: .5px solid #e5e5ea; }
+.ios-input span { flex: 1; border: 1px solid #d1d1d6; border-radius: 18px; padding: 7px 14px; color: #c7c7cc; font-size: 16px; }
+
+/* Camera icon inside the plate field */
+.plate-wrap { position: relative; }
+.plate-wrap input { padding-right: 46px; }
+.cam-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; border-radius: 8px; background: transparent; color: var(--blue); display: grid; place-items: center; cursor: pointer; }
+.cam-btn:hover { background: var(--blue-soft); }
+.cam-btn.scanning { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .cam-btn.scanning { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .notif { animation: none; } }
 
 /* Wizard panel */
@@ -135,3 +180,62 @@ ol.steps li { display: flex; gap: 12px; align-items: flex-start; }
 .wiz-group button:hover { border-color: var(--blue); }
 .wiz-check { display: flex; gap: 8px; align-items: center; }
 kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; }
+
+/* iOS Safari "Add Bookmark" sheet (demo) */
+.phone.sheet-app, .phone.sheet-app .screen { background: #f2f2f7; }
+.ios-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 16px 10px; font-size: 17px; }
+.ios-nav strong { font-weight: 600; }
+.ios-link { background: none; border: 0; color: #007aff; font-size: 17px; cursor: pointer; padding: 4px 0; justify-self: start; }
+.ios-link.b { font-weight: 600; justify-self: end; }
+.ios-group { margin: 10px 16px 0; background: #fff; border-radius: 10px; overflow: hidden; }
+.ios-cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; font-size: 17px; }
+.ios-cell.bm { align-items: flex-start; padding: 12px 16px; }
+.bm-icon { width: 60px; height: 60px; border-radius: 12px; background: var(--blue); color: #fff; font-weight: 800; font-size: 32px; display: grid; place-items: center; flex: none; }
+.bm-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bm-fields input { border: 0; border-bottom: .5px solid #c6c6c8; border-radius: 0; padding: 6px 0 9px; font-size: 17px; background: transparent; }
+.bm-fields input:focus { outline: none; border-bottom-color: #007aff; }
+.bm-url { font-size: 17px; color: #8e8e93; padding-top: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ios-label { margin: 26px 32px 0; font-size: 13px; color: #6d6d72; letter-spacing: .02em; }
+.bm-star { color: #007aff; font-size: 20px; }
+.bm-loc { flex: 1; }
+.bm-chev { color: #c7c7cc; font-size: 22px; }
+.ios-foot { margin: 10px 32px 0; font-size: 13px; color: #6d6d72; line-height: 1.4; }
+
+/* iPhone lock screen (wizard setup) */
+.phone.lock-app { background: linear-gradient(165deg, #2b3d6b 0%, #5a3f7a 55%, #b0577a 100%); }
+.phone.lock-app .topbar, .phone.lock-app .proto-tag { display: none; }
+.phone.lock-app .statusbar { color: #fff; }
+.phone.lock-app .scroller, .phone.lock-app .screen { background: transparent; }
+.phone.lock-app .screen { padding: 0; min-height: 100%; }
+.lock { min-height: 100%; display: flex; flex-direction: column; color: #fff; font-family: -apple-system, "SF Pro Display", BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+.lock-top { display: flex; flex-direction: column; align-items: center; padding-top: 8px; }
+.lock-padlock { opacity: .9; margin-bottom: 6px; }
+.lock-date { font-size: 19px; font-weight: 500; opacity: .92; }
+.lock-time { font-size: 92px; font-weight: 600; line-height: 1; letter-spacing: -2px; margin-top: 2px; }
+.lock-notifs { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 16px 8px; }
+.lock-notif {
+  display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px 12px 11px; border-radius: 22px; cursor: pointer;
+  background: rgba(245,245,247,.72); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  color: #000; animation: rise .45s cubic-bezier(.2,.9,.3,1.1);
+}
+@keyframes rise { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .lock-notif { animation: none; } }
+.lock-bottom { display: flex; justify-content: space-between; padding: 0 44px 22px; }
+.lock-btn { width: 50px; height: 50px; border-radius: 50%; background: rgba(0,0,0,.28); display: grid; place-items: center; }
+.home-bar { width: 134px; height: 5px; border-radius: 3px; background: #fff; margin: 0 auto 8px; }
+.phone.lock-app .scroller { display: flex; flex-direction: column; }
+.phone.lock-app .screen { flex: 1; display: flex; }
+.phone.lock-app .lock { flex: 1; }
+.phone.lock-app #sbTime { visibility: hidden; }
+
+/* Safari Bookmarks list (demo) */
+.ios-seg { display: grid; grid-template-columns: repeat(3, 1fr); margin: 2px 16px 10px; background: #e3e3e8; border-radius: 9px; padding: 2px; }
+.ios-seg span { display: grid; place-items: center; height: 30px; border-radius: 7px; color: #3c3c43; }
+.ios-seg span.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); color: #007aff; }
+.ios-search { display: flex; align-items: center; gap: 6px; margin: 0 16px; padding: 8px 10px; background: #e3e3e8; border-radius: 10px; color: #8e8e93; font-size: 17px; }
+.bm-list .ios-cell + .ios-cell { border-top: .5px solid #c6c6c8; margin-left: 0; }
+.bm-row { width: 100%; background: #fff; border: 0; text-align: left; cursor: pointer; font: inherit; color: #000; }
+.bm-row:active { background: #e5e5ea; }
+.bm-text { display: flex; flex-direction: column; min-width: 0; }
+.bm-title { font-size: 17px; }
+.bm-sub { font-size: 13px; color: #8e8e93; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
