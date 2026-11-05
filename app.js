@@ -7,12 +7,16 @@
   var TIER2 = 10;                 // up to 12 hours: $10
   var REMIND_BEFORE = 15;         // text reminder before free time ends
 
+  // All 50 states plus DC, alphabetical by postal code
+  var STATES = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+
   // ---------- Demo profile used by the wizard ----------
   var DEMO = { name: "Jamie Morgan", plate: "JMK4821", state: "GA", contactType: "phone", contact: "(404) 555-0147", auto: true };
 
   // ---------- State ----------
-  var KEY = "lot7-proto";
+  var KEY = "parking-app-proto";
   var state = load() || fresh();
+  state.weak = false;
   var draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false };
   var errors = {};
   var confirmEnd = false;
@@ -32,6 +36,14 @@
     var h = Math.floor(min / 60), m = min % 60;
     return (h ? h + " h " : "") + m + " min";
   }
+  // "2 hours", "1 hour 45 minutes", "15 minutes"
+  function words(min) {
+    min = Math.max(0, Math.ceil(min));
+    var h = Math.floor(min / 60), m = min % 60, out = [];
+    if (h) out.push(h + (h === 1 ? " hour" : " hours"));
+    if (m || !h) out.push(m + (m === 1 ? " minute" : " minutes"));
+    return out.join(" ");
+  }
   function elapsed(s) { return (now() - s.start) / 60000; }
   function charge(min) { return min <= FREE_MIN ? 0 : min <= TIER1_MIN ? TIER1 : TIER2; }
   function freeUntil(start) { return start + FREE_MIN * 60000; }
@@ -44,7 +56,7 @@
     var d = p.contact.replace(/\D/g, "");
     return "(•••) •••-" + d.slice(-4);
   }
-  function go(screen) { state.screen = screen; confirmEnd = false; save(); render(); $("screen").scrollTop = 0; }
+  function go(screen) { state.screen = screen; confirmEnd = false; save(); render(); $("scroller").scrollTop = 0; }
 
   var toastTimer;
   function toast(msg) {
@@ -54,13 +66,46 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.remove(); }, 2200);
   }
 
+  // ---------- Text messages: arrive 2 s after the action, with a ding ----------
+  var TEXT_DELAY = 2000;
+  var audio = null;
+  function unlockAudio() {
+    // Browsers only allow sound after a tap or click, so create it on the first one
+    if (audio) return;
+    try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+  }
+  function ding() {
+    if (!audio) return;
+    try {
+      if (audio.state === "suspended") audio.resume();
+      var t0 = audio.currentTime;
+      // Two quick bell-like notes, similar to a phone's text alert
+      [[1318.5, 0], [1760, 0.12]].forEach(function (n) {
+        var osc = audio.createOscillator(), gain = audio.createGain();
+        osc.type = "sine"; osc.frequency.value = n[0];
+        gain.gain.setValueAtTime(0.0001, t0 + n[1]);
+        gain.gain.exponentialRampToValueAtTime(0.25, t0 + n[1] + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + n[1] + 0.5);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(t0 + n[1]); osc.stop(t0 + n[1] + 0.55);
+      });
+    } catch (e) {}
+  }
+
   var notifTimer;
   function text(msg) {
-    state.messages.unshift({ t: now(), msg: msg });
-    state.unread += 1; save();
-    $("notifText").textContent = msg; $("notif").hidden = false;
-    clearTimeout(notifTimer); notifTimer = setTimeout(function () { $("notif").hidden = true; }, 5000);
-    renderChrome();
+    var sentAt = now();
+    setTimeout(function () {
+      state.messages.unshift({ t: sentAt, msg: msg });
+      state.unread += 1; save();
+      if (state.screen === "messages" || state.screen === "lock") { render(); }
+      else {
+        $("notifText").textContent = msg; $("notif").hidden = false;
+        clearTimeout(notifTimer); notifTimer = setTimeout(function () { $("notif").hidden = true; }, 6000);
+      }
+      ding();
+      renderChrome();
+    }, TEXT_DELAY);
   }
 
   // ---------- Screens ----------
@@ -70,12 +115,12 @@
     var s = state.session;
     if (s && big) {
       var used = elapsed(s), left = FREE_MIN - used, over = left < 0;
-      var pct = Math.min(100, Math.max(0, used / FREE_MIN * 100));
+      var after = "After, $" + TIER1 + " up to 5 hours and $" + TIER2 + " up to 12 hours";
       return '<div class="free big' + (over ? " over" : "") + '">' +
         '<span class="lbl">' + (over ? "Free parking ended at" : "Free parking until") + '</span>' +
         '<span class="time">' + fmt(freeUntil(s.start)) + '</span>' +
-        '<span class="rates">' + (over ? "You now owe $" + charge(used) + ". " + rates.replace("Then ", "") : dur(left) + " left. " + rates) + '</span>' +
-        '<div class="bar" aria-hidden="true"><span style="width:' + pct + '%"></span></div></div>';
+        '<span class="rates"><strong>' + (over ? "You owe $" + charge(used) + " so far" : words(left) + " remaining") + '</strong><br>' +
+          (over ? "$" + TIER1 + " up to 5 hours and $" + TIER2 + " up to 12 hours" : after) + '</span></div>';
     }
     return '<div class="free"><span class="lbl">Register now and park free until</span>' +
       '<span class="time" id="freeNow">' + fmt(freeUntil(start)) + '</span>' +
@@ -92,26 +137,30 @@
     var form = p ? "" :
       '<div class="card"><div class="step-head"><span class="num">1</span><h2>Your vehicle</h2></div>' +
         '<div class="field"><label for="plate">License plate</label><div class="row">' +
-          '<input type="text" id="plate" autocomplete="off" autocapitalize="characters" maxlength="8" placeholder="e.g. ABC1234" value="' + esc(draft.plate) + '"' + (errors.plate ? ' class="bad" aria-invalid="true"' : "") + '>' +
-          '<select id="pstate" aria-label="Plate state">' + ["GA", "AL", "FL", "NC", "SC", "TN", "Other"].map(function (s) { return "<option" + (s === draft.state ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></div>' +
-          (errors.plate ? '<span class="err">' + errors.plate + '</span>' : '<span class="hint">Must match your plate exactly. Cameras use it to find your car.</span>') +
-        '</div><button class="btn secondary" type="button" data-action="scan" id="scanBtn">Scan plate with camera</button></div>' +
+          '<div class="plate-wrap"><input type="text" id="plate" autocomplete="off" autocapitalize="characters" maxlength="8" placeholder="e.g. ABC1234" value="' + esc(draft.plate) + '"' + (errors.plate ? ' class="bad" aria-invalid="true"' : "") + '>' +
+          '<button type="button" class="cam-btn" data-action="scan" aria-label="Scan plate with camera (optional)" title="Scan plate (optional)">' +
+            '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
+          '</button></div>' +
+          '<select id="pstate" aria-label="Plate state">' + STATES.map(function (s) { return "<option" + (s === draft.state ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></div>' +
+          (errors.plate ? '<span class="err">' + errors.plate + '</span>' : '<span class="hint">Optionally, tap the camera to use your camera</span>') +
+        '</div></div>' +
 
       '<div class="card"><div class="step-head"><span class="num">2</span><h2>How we reach you</h2></div>' +
         '<div class="field"><label for="name">Name</label><input type="text" id="name" autocomplete="name" value="' + esc(draft.name) + '"' + (errors.name ? ' class="bad"' : "") + '>' +
           (errors.name ? '<span class="err">' + errors.name + '</span>' : "") + '</div>' +
-        '<div class="field"><label for="contact">' + (draft.contactType === "phone" ? "Mobile number" : "Email") + '</label>' +
+        '<div class="field"><div class="label-row"><label for="contact">' + (draft.contactType === "phone" ? "Mobile number" : "Email") + '</label>' +
+          '<button class="link" type="button" data-action="swapContact">' + (draft.contactType === "phone" ? "Use email instead" : "Use phone instead") + '</button></div>' +
           '<input type="' + (draft.contactType === "phone" ? "tel" : "email") + '" id="contact" autocomplete="' + (draft.contactType === "phone" ? "tel" : "email") + '" placeholder="' + (draft.contactType === "phone" ? "(555) 555-5555" : "you@example.com") + '" value="' + esc(draft.contact) + '"' + (errors.contact ? ' class="bad"' : "") + '>' +
           (errors.contact ? '<span class="err">' + errors.contact + '</span>' : '<span class="hint">We\'ll send your confirmation and a reminder ' + REMIND_BEFORE + ' minutes before free parking ends.</span>') +
-          '<button class="link" type="button" data-action="swapContact">' + (draft.contactType === "phone" ? "Use email instead" : "Use a phone number instead") + '</button></div></div>' +
+          '</div></div>' +
 
       '<div class="card"><div class="step-head"><span class="num">3</span><h2>Next time</h2></div>' +
         '<label class="check"><input type="checkbox" id="remember"' + (draft.remember ? " checked" : "") + '><span>Remember me on this phone<small>Next visit is one tap.</small></span></label>' +
         '<label class="check"><input type="checkbox" id="auto"' + (draft.auto ? " checked" : "") + '><span>Sign me up for AUTO<small>Skip this form. Cameras check you in and text you.</small></span></label>' +
         '<button class="link" type="button" data-action="howAuto">How AUTO works</button></div>' +
 
-      '<p class="note">No card needed now. You only pay if you stay past the free time.</p>' +
-      '<button class="btn" type="button" data-action="register" id="regBtn">Register my parking</button>';
+      '<button class="btn" type="button" data-action="register" id="regBtn">Register to park</button>' +
+      '<p class="note">No card needed now. You only pay if you stay past the free time.</p>';
 
     return '<h1>Register your parking</h1>' + freeBanner(now(), false) + welcome + form;
   }
@@ -122,14 +171,11 @@
     var used = elapsed(s), owed = charge(used);
     var head = owed
       ? '<div class="ok-head"><span class="ok-dot warn-dot">!</span><div><h1>Your free time is up</h1><p class="sub">Pay now, or pay when you leave.</p></div></div>'
-      : '<div class="ok-head"><span class="ok-dot">✓</span><div><h1>You\'re registered</h1><p class="sub">You\'re covered. No need to keep this page open.</p></div></div>';
+      : '<div class="ok-head"><span class="ok-dot">✓</span><div><h1>' + (s.viaAuto ? "You\'re automatically checked in" : "You\'re registered") + '</h1><p class="sub">We\'ll send you a text and let you know when your parking is up.</p></div></div>';
     var actions = owed
       ? '<button class="btn" type="button" data-action="pay">Pay $' + owed + ' now</button>'
       : '<button class="btn secondary" type="button" data-action="calendar">Add reminder to calendar</button>';
-    var end = confirmEnd
-      ? '<div class="confirm"><strong>End your parking session?</strong><p class="sub">' + (owed ? "You'll pay $" + owed + " for " + dur(used) + "." : "You won't be charged.") + '</p>' +
-        '<button class="btn danger" type="button" data-action="endYes">Yes, I\'m leaving</button><button class="btn ghost" type="button" data-action="endNo">Keep parking</button></div>'
-      : '<button class="btn ghost" type="button" data-action="end">I\'m leaving now</button>';
+    var end = '<button class="btn secondary" type="button" data-action="bookmark">Add bookmark for next time</button>';
 
     return head + freeBanner(s.start, true) +
       '<div class="card"><dl class="details">' +
@@ -176,33 +222,100 @@
         '<li><span class="num">2</span><p><strong>Just drive in</strong><br><span class="sub">The lot\'s cameras read your plate and start your session. No sign, no form.</span></p></li>' +
         '<li><span class="num">3</span><p><strong>Get a text each time</strong><br><span class="sub">One when you arrive with your free-until time, one when you leave with any charge.</span></p></li>' +
       '</ol></div>' +
-      '<p class="note">Your plate is only used to match your visits to this lot. You can turn AUTO off at any time.</p>' +
-      '<button class="btn" type="button" data-action="back">Back</button>';
+      '<button class="btn" type="button" data-action="back">Back</button>' +
+      '<p class="note">Your plate is only used to match your visits to this lot. You can turn AUTO off at any time. ' +
+        'We do not store timestamps or activities. We only maintain your license plate number from the AUTO system. ' +
+        'All of your information is encrypted and safe with us.</p>';
   }
 
   function viewMessages() {
-    var list = state.messages.length
-      ? state.messages.map(function (m) { return '<div class="bubble">' + esc(m.msg) + '<time>' + fmt(m.t) + '</time></div>'; }).join("")
-      : '<p class="sub">No texts yet.</p>';
-    return '<h1>Texts from Lot 7</h1><div class="msg-list">' + list + '</div>' +
-      '<button class="btn ghost" type="button" data-action="back">Back</button>';
+    var msgs = state.messages.slice().reverse(); // oldest first, like a real thread
+    var thread = msgs.length ? "" : '<p class="ios-empty">No messages</p>';
+    msgs.forEach(function (m, i) {
+      var gap = i === 0 || m.t - msgs[i - 1].t > 15 * 60000;
+      if (gap) thread += '<div class="ios-stamp"><b>Today</b> ' + fmt(m.t) + '</div>';
+      var lastInRun = i === msgs.length - 1 || msgs[i + 1].t - m.t > 15 * 60000;
+      thread += '<div class="ios-bubble' + (lastInRun ? " tail" : "") + '">' + esc(m.msg) + '</div>';
+    });
+    return '<div class="ios-head"><button class="ios-back" type="button" data-action="back" aria-label="Back to parking"><b>‹</b></button>' +
+      '<div class="ios-avatar" aria-hidden="true">PA</div><div class="ios-name">Parking App ›</div></div>' +
+      '<div class="ios-thread">' + thread + '</div>' +
+      '<div class="ios-input" aria-hidden="true"><span>Text Message</span></div>';
   }
 
-  var views = { register: viewRegister, confirm: viewConfirm, pay: viewPay, done: viewDone, auto: viewAuto, messages: viewMessages };
+  function bookmarkUrl() {
+    return /^https?:/.test(location.protocol) ? location.host + location.pathname.replace(/index\.html$/, "") : "parking-app.vercel.app/";
+  }
+  function viewBookmark() {
+    return '<div class="ios-nav"><button class="ios-link" type="button" data-action="back">Cancel</button>' +
+        '<strong>Add Bookmark</strong><button class="ios-link b" type="button" data-action="saveBookmark">Save</button></div>' +
+      '<div class="ios-group"><div class="ios-cell bm"><div class="bm-icon" aria-hidden="true">P</div>' +
+        '<div class="bm-fields"><input type="text" id="bmTitle" value="Register to park" aria-label="Bookmark name">' +
+        '<div class="bm-url">' + esc(bookmarkUrl()) + '</div></div></div></div>' +
+      '<div class="ios-label">LOCATION</div>' +
+      '<div class="ios-group"><div class="ios-cell"><span class="bm-star" aria-hidden="true">☆</span><span class="bm-loc">Favorites</span><span class="bm-chev" aria-hidden="true">›</span></div></div>' +
+      '<p class="ios-foot">Next time, open Favorites and tap "Register to park" to go straight to the form.</p>';
+  }
+
+  function viewLock() {
+    var d = new Date(now());
+    var date = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    var time = fmt(now()).replace(/\s?[AP]M/i, "");
+    // Only texts that arrived after the phone was locked
+    var fresh = state.messages.slice(0, Math.max(0, state.messages.length - (state.lockCount || 0)));
+    var cards = fresh.map(function (m) {
+      return '<div class="lock-notif" role="button" tabindex="0" data-action="lockOpen">' +
+        '<div class="notif-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="#fff" d="M12 3.5c-5 0-9 3.3-9 7.4 0 2.3 1.3 4.4 3.3 5.8-.2 1.3-.8 2.5-1.8 3.4 1.9 0 3.6-.7 4.8-1.8.9.2 1.8.3 2.7.3 5 0 9-3.3 9-7.4S17 3.5 12 3.5z"/></svg></div>' +
+        '<div class="notif-body"><div class="notif-top"><strong>Parking App</strong><span>now</span></div>' +
+        '<div class="notif-text">' + esc(m.msg) + '</div></div></div>';
+    }).join("");
+    return '<div class="lock">' +
+      '<div class="lock-top"><div class="lock-padlock" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>' +
+        '<div class="lock-date">' + esc(date) + '</div><div class="lock-time">' + esc(time) + '</div></div>' +
+      '<div class="lock-notifs">' + cards + '</div>' +
+      '<div class="lock-bottom" aria-hidden="true"><span class="lock-btn">' +
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8"><path d="M8 3h8l-1 6H9z"/><path d="M9 9h6v12H9z"/></svg></span>' +
+        '<span class="lock-btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg></span></div>' +
+      '<div class="home-bar" aria-hidden="true"></div></div>';
+  }
+
+  // Replica of Safari's Bookmarks list, with the Parking App bookmark already saved
+  function viewBookmarks() {
+    var ico = function (d) { return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
+    var book = ico('<path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/>');
+    var glasses = ico('<circle cx="6.5" cy="15" r="3.5"/><circle cx="17.5" cy="15" r="3.5"/><path d="M10 15h4M3 15l2-7M21 15l-2-7"/>');
+    var clock = ico('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
+    var folder = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#007aff" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
+    var bmark = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#007aff" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/></svg>';
+    return '<div class="ios-nav"><span></span><strong>Bookmarks</strong><button class="ios-link b" type="button" data-action="back">Done</button></div>' +
+      '<div class="ios-seg" aria-hidden="true"><span class="on">' + book + '</span><span>' + glasses + '</span><span>' + clock + '</span></div>' +
+      '<div class="ios-search" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#8e8e93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</div>' +
+      '<div class="ios-group bm-list">' +
+        '<div class="ios-cell">' + folder + '<span class="bm-loc">Favorites</span><span class="bm-chev" aria-hidden="true">›</span></div>' +
+        '<button type="button" class="ios-cell bm-row" data-action="openBookmark">' + bmark +
+          '<span class="bm-text"><span class="bm-title">Parking App</span><span class="bm-sub">' + esc(bookmarkUrl()) + '</span></span></button>' +
+      '</div>' +
+      '<p class="ios-foot">Tap a bookmark to open it.</p>';
+  }
+
+  var views = { bookmarks: viewBookmarks, lock: viewLock, bookmark: viewBookmark, register: viewRegister, confirm: viewConfirm, pay: viewPay, done: viewDone, auto: viewAuto, messages: viewMessages };
   var prev = "register";
 
   function render() {
     $("screen").innerHTML = (views[state.screen] || viewRegister)();
+    var sheet = state.screen === "bookmark" || state.screen === "bookmarks";
+    $("phone").classList.toggle("msg-app", state.screen === "messages" || sheet);
+    $("phone").classList.toggle("sheet-app", sheet);
+    $("phone").classList.toggle("lock-app", state.screen === "lock");
     renderChrome();
   }
   function renderChrome() {
     $("sbTime").textContent = fmt(now()).replace(/\s?[AP]M/i, "");
     $("sbSignal").textContent = state.weak ? "1 bar ▮" : "5G ▮▮▮";
-    $("msgBadge").hidden = !state.unread; $("msgBadge").textContent = state.unread;
     $("wizTime").textContent = fmt(now());
     var s = state.session;
     $("wizSession").textContent = s ? "Session: " + dur(elapsed(s)) + " parked, owes $" + charge(elapsed(s)) : "No active session";
-    $("wizSignal").checked = !!state.weak;
   }
 
   // ---------- Actions ----------
@@ -232,7 +345,7 @@
     var btn = $("regBtn") || document.querySelector('[data-action="quick"]');
     var complete = function () {
       startSession(p);
-      text("You're registered at Lot 7. Plate " + p.plate + ". Free parking until " + fmt(freeUntil(now())) + ". We'll remind you " + REMIND_BEFORE + " min before.");
+      text("You're registered. Plate " + p.plate + ". Free parking until " + fmt(freeUntil(now())) + ". We'll remind you " + REMIND_BEFORE + " min before.");
       go("confirm");
     };
     if (state.weak) {
@@ -247,14 +360,14 @@
     var total = charge(elapsed(s));
     if (total && !paid) {
       // Owes money and hasn't paid yet: send them to pay instead of ending silently
-      text("You left Lot 7 at " + fmt(now()) + " after " + dur(elapsed(s)) + ". You owe $" + total.toFixed(2) + ". Tap to pay.");
+      text("You left at " + fmt(now()) + " after " + dur(elapsed(s)) + ". You owe $" + total.toFixed(2) + ". Tap to pay.");
       prev = "confirm"; go("pay"); return;
     }
     state.last = { plate: s.plate, start: s.start, end: now(), total: total };
     state.session = null; save();
     text(total
-      ? "Payment received: $" + total.toFixed(2) + " for " + dur((state.last.end - state.last.start) / 60000) + " at Lot 7. Thanks!"
-      : "You left Lot 7 at " + fmt(now()) + ". Time parked: " + dur((state.last.end - state.last.start) / 60000) + ". Total: $0.00. Thanks!");
+      ? "Payment received: $" + total.toFixed(2) + " for " + dur((state.last.end - state.last.start) / 60000) + ". Thanks!"
+      : "You left at " + fmt(now()) + ". Time parked: " + dur((state.last.end - state.last.start) / 60000) + ". Total: $0.00. Thanks!");
     go("done");
   }
 
@@ -272,7 +385,10 @@
     save();
   }
 
+  document.addEventListener("pointerdown", unlockAudio, true);
+  document.addEventListener("keydown", unlockAudio, true);
   document.addEventListener("click", function (e) {
+    unlockAudio();
     var a = e.target.closest("[data-action]");
     if (a) {
       var act = a.getAttribute("data-action");
@@ -287,12 +403,19 @@
         case "forget": state.profile = null; save(); render(); break;
         case "swapContact": draft.contactType = draft.contactType === "phone" ? "email" : "phone"; draft.contact = ""; errors.contact = null; render(); break;
         case "scan":
-          a.disabled = true; a.textContent = "Point your camera at the plate…";
+          a.classList.add("scanning"); $("plate").value = ""; $("plate").placeholder = "Scanning plate…";
           break; // the wizard completes the scan
         case "howAuto": prev = state.screen; go("auto"); break;
         case "messages": prev = state.screen === "messages" ? prev : state.screen; state.unread = 0; go("messages"); break;
-        case "back": go(prev === "auto" || prev === "messages" ? "register" : prev); break;
+        case "back":
+          var dest = prev === "auto" || prev === "messages" || prev === "lock" ? "register" : prev;
+          go(dest); if (dest === "pay") prev = "confirm";
+          break;
         case "calendar": toast("Reminder added for " + fmt(freeUntil(state.session.start) - REMIND_BEFORE * 60000)); break;
+        case "bookmark": prev = state.screen; go("bookmark"); break;
+        case "lockOpen": openMessages(); break;
+        case "openBookmark": wizard(state.bmTarget === "returning" ? "returning" : "arriveNew"); break;
+        case "saveBookmark": go(prev); toast("Added to Favorites"); break;
         case "end": confirmEnd = true; render(); break;
         case "endNo": confirmEnd = false; render(); break;
         case "endYes": endSession(); break;
@@ -306,8 +429,14 @@
     if (w) wizard(w.getAttribute("data-wiz"));
   });
 
-  $("notif").addEventListener("click", function () { $("notif").hidden = true; prev = state.screen; state.unread = 0; go("messages"); });
-  $("wizSignal").addEventListener("change", function () { state.weak = this.checked; save(); renderChrome(); });
+  function openMessages() {
+    $("notif").hidden = true;
+    if (state.screen === "lock") prev = state.lockNext || "confirm"; // where "unlocking" lands
+    else if (state.screen !== "messages") prev = state.screen;
+    state.unread = 0; go("messages");
+  }
+  $("notif").addEventListener("click", openMessages);
+  $("notif").addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openMessages(); } });
 
   // ---------- Wizard ----------
   function setElapsed(min) {
@@ -323,15 +452,69 @@
         state = fresh(); base = Date.now();
         draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false }; errors = {};
         render(); break;
-      case "returning": state.profile = Object.assign({}, DEMO); state.session = null; go("register"); break;
+      case "bmNew":
+      case "bmReturning":
+        state.bmTarget = cmd === "bmNew" ? "new" : "returning";
+        if (state.screen !== "bookmarks") prev = state.screen === "lock" ? "register" : state.screen;
+        $("notif").hidden = true; go("bookmarks"); break;
+      case "arriveNew":
+        // Empty form, nothing saved, no session; keeps the text history
+        state.profile = null; state.session = null; errors = {};
+        draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false };
+        $("notif").hidden = true; go("register"); break;
+      case "returning": state.profile = Object.assign({}, DEMO); state.session = null; $("notif").hidden = true; go("register"); break;
+      case "lock":
+        var lp = Object.assign({}, state.profile || DEMO, { auto: true });
+        state.profile = lp; startSession(lp); state.session.viaAuto = true; state.lockSince = now(); state.lockCount = state.messages.length; state.lockNext = "confirm";
+        $("notif").hidden = true; go("lock");
+        text("Welcome back. Your car " + lp.plate + " entered the lot at " + fmt(now()) + ". You're automatically checked in, and parking is free until " + fmt(freeUntil(now())) + ".");
+        break;
       case "scan":
         if (state.screen !== "register" || !$("plate")) { toast("Wizard: open the registration form first"); return; }
         readForm(); draft.plate = DEMO.plate; draft.state = DEMO.state; errors.plate = null; render(); toast("Plate read: " + DEMO.plate); break;
+      case "lockLeave":
+        if (!state.session) {
+          // No session yet: pretend the car arrived 1 hour 12 minutes ago
+          var lp2 = Object.assign({}, state.profile || DEMO, { auto: true });
+          state.profile = lp2; startSession(lp2); state.session.start = now() - 72 * 60000;
+        }
+        var ls = state.session, lused = elapsed(ls), ltotal = charge(lused);
+        state.lockSince = now(); state.lockCount = state.messages.length; $("notif").hidden = true;
+        if (ltotal) {
+          state.lockNext = "pay"; go("lock");
+          text("Your car " + ls.plate + " left the lot at " + fmt(now()) + " after " + dur(lused) + ". You owe $" + ltotal.toFixed(2) + ". Tap to pay.");
+        } else {
+          state.last = { plate: ls.plate, start: ls.start, end: now(), total: 0 };
+          state.session = null; state.lockNext = "done"; go("lock");
+          text("Your car " + ls.plate + " left the lot at " + fmt(now()) + ". Time parked: 1 hour and 12 minutes. Total: $0.00. Thanks for parking!");
+        }
+        break;
       case "autoEnter":
         var p = state.profile && state.profile.auto ? state.profile : Object.assign({}, DEMO);
-        state.profile = p; startSession(p);
-        text("Welcome back to Lot 7. AUTO checked in " + p.plate + " at " + fmt(now()) + ". Free parking until " + fmt(freeUntil(now())) + ".");
+        state.profile = p; startSession(p); state.session.viaAuto = true;
+        text("Welcome back. Your car " + p.plate + " entered the lot at " + fmt(now()) + ". You're automatically checked in, and parking is free until " + fmt(freeUntil(now())) + ".");
         go("confirm"); break;
+      case "msgEnter":
+        // Text only: the driver stays on whatever screen they're on
+        var mp = Object.assign({}, state.profile || DEMO, { auto: true });
+        state.profile = mp;
+        if (!state.session) { startSession(mp); state.session.viaAuto = true; }
+        text("Welcome back. Your car " + mp.plate + " entered the lot at " + fmt(now()) + ". You're automatically checked in, and parking is free until " + fmt(freeUntil(state.session.start)) + ".");
+        save(); break;
+      case "msgLeave":
+        // Text only: the driver stays on whatever screen they're on
+        var ms = state.session, mplate = (ms || state.profile || DEMO).plate;
+        var mused = ms ? elapsed(ms) : 72, mtotal = charge(mused);
+        if (ms && mtotal) {
+          if (state.screen === "lock") state.lockNext = "pay";
+          text("Your car " + mplate + " left the lot at " + fmt(now()) + " after " + dur(mused) + ". You owe $" + mtotal.toFixed(2) + ". Tap to pay.");
+        } else {
+          state.last = { plate: mplate, start: ms ? ms.start : now() - 72 * 60000, end: now(), total: 0 };
+          state.session = null;
+          if (state.screen === "lock") state.lockNext = "done";
+          text("Your car " + mplate + " left the lot at " + fmt(now()) + ". Time parked: 1 hour and 12 minutes. Total: $0.00. Thanks for parking!");
+        }
+        save(); break;
       case "autoLeave":
         if (!state.session) { toast("Wizard: no active session"); return; }
         endSession(); break;
@@ -361,7 +544,7 @@
   setInterval(function () {
     if (document.activeElement && /INPUT|SELECT/.test(document.activeElement.tagName)) { renderChrome(); var f = $("freeNow"); if (f) f.textContent = fmt(freeUntil(now())); return; }
     checkTimers();
-    if (state.screen === "confirm" || state.screen === "register") { var y = $("screen").scrollTop; readFormIfRegister(); render(); $("screen").scrollTop = y; }
+    if (state.screen === "confirm" || state.screen === "register") { var y = $("scroller").scrollTop; readFormIfRegister(); render(); $("scroller").scrollTop = y; }
     else renderChrome();
   }, 15000);
   function readFormIfRegister() { if (state.screen === "register") readForm(); }
