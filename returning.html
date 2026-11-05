@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parking App Prototype</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-start="returning">
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="statusbar"><span id="sbTime">9:41</span><span class="sb-right" id="sbSignal">5G ▮▮▮</span></div>
+    <div class="notif" id="notif" role="button" tabindex="0" aria-label="Open text message" hidden>
+      <div class="notif-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="#fff" d="M12 3.5c-5 0-9 3.3-9 7.4 0 2.3 1.3 4.4 3.3 5.8-.2 1.3-.8 2.5-1.8 3.4 1.9 0 3.6-.7 4.8-1.8.9.2 1.8.3 2.7.3 5 0 9-3.3 9-7.4S17 3.5 12 3.5z"/></svg>
+      </div>
+      <div class="notif-body">
+        <div class="notif-top"><strong>Parking App</strong><span>now</span></div>
+        <div class="notif-text" id="notifText"></div>
+      </div>
+    </div>
+    <div class="scroller" id="scroller">
+    <header class="topbar">
+      <button class="brand" id="brand" type="button" aria-label="Parking App home">
+        <span class="psign">P</span><span class="brand-name">Parking App</span>
+      </button>
+    </header>
+    <main class="screen" id="screen" tabindex="-1"></main>
+    </div>
+    <div class="proto-tag">Prototype · no real payments · no data saved · <button type="button" class="restart" data-wiz="reset">Start over</button></div>
+  </div>
+
+  <aside class="wizard" id="wizard" aria-label="Wizard controls">
+    <div class="wiz-head">
+      <strong>Wizard controls</strong>
+      <button type="button" class="wiz-close" data-wiz="hide" aria-label="Hide wizard">×</button>
+    </div>
+    <p class="wiz-note">Hidden from participants. Press <kbd>W</kbd> or triple-tap the logo to show or hide.</p>
+    <div class="wiz-clock">Simulated time: <b id="wizTime">–</b><br><span id="wizSession">No active session</span></div>
+
+    <div class="wiz-group"><span>Storylines</span>
+      <button type="button" data-wiz="reset">Reset demo</button>
+      <button type="button" data-wiz="arriveNew">Arrive as new user</button>
+      <button type="button" data-wiz="returning">Arrive as returning user</button>
+      <button type="button" data-wiz="lock">Arrive as Auto user</button>
+    </div>
+    <div class="wiz-group"><span>System Actions</span>
+      <button type="button" data-wiz="scan">Plate scan succeeds</button>
+      <button type="button" data-wiz="msgEnter">Message Auto car enters lot</button>
+      <button type="button" data-wiz="msgLeave">Message Auto car leaves lot</button>
+    </div>
+    <div class="wiz-group"><span>Screens</span>
+      <button type="button" data-wiz="bmNew">Bookmark - new user</button>
+      <button type="button" data-wiz="bmReturning">Bookmark - returning user</button>
+    </div>
+  </aside>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
