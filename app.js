@@ -144,7 +144,7 @@
             '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
           '</button></div>' +
           '<select id="pstate" aria-label="Plate state">' + STATES.map(function (s) { return "<option" + (s === draft.state ? " selected" : "") + ">" + s + "</option>"; }).join("") + '</select></div>' +
-          (errors.plate ? '<span class="err">' + errors.plate + '</span>' : '<span class="hint">Optionally, tap the camera to use your camera</span>') +
+          (errors.plate ? '<span class="err">' + errors.plate + '</span>' : '<span class="hint">Optionally, tap the icon to use your camera</span>') +
         '</div></div>' +
 
       '<div class="card"><div class="step-head"><span class="num">2</span><h2>How we reach you</h2></div>' +
@@ -406,8 +406,8 @@
         case "forget": state.profile = null; save(); render(); break;
         case "swapContact": draft.contactType = draft.contactType === "phone" ? "email" : "phone"; draft.contact = ""; errors.contact = null; render(); break;
         case "scan":
-          // Opens the phone's camera. The photo is never read, uploaded, or saved.
-          if ($("plateCam")) $("plateCam").click();
+          // Phones and tablets only: open the camera. On a desktop the icon does nothing.
+          if (isTouchDevice() && $("plateCam")) $("plateCam").click();
           break;
         case "howAuto": prev = state.screen; go("auto"); break;
         case "messages": prev = state.screen === "messages" ? prev : state.screen; state.unread = 0; go("messages"); break;
@@ -433,6 +433,10 @@
     if (w) wizard(w.getAttribute("data-wiz"));
   });
 
+  var CAMERA_PLATE = "ABC123";
+  function isTouchDevice() {
+    return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  }
   // After a photo is taken, pretend to read the plate (Wizard of Oz: no real recognition)
   document.addEventListener("change", function (e) {
     if (e.target.id !== "plateCam" || !e.target.files || !e.target.files.length) return;
@@ -443,8 +447,8 @@
     if (field) { field.value = ""; field.placeholder = "Reading plate…"; }
     setTimeout(function () {
       if (state.screen !== "register" || !$("plate")) return;
-      readForm(); draft.plate = DEMO.plate; draft.state = DEMO.state; errors.plate = null;
-      render(); toast("Plate read: " + DEMO.plate);
+      readForm(); draft.plate = CAMERA_PLATE; draft.state = "GA"; errors.plate = null;
+      render(); toast("Plate read: " + CAMERA_PLATE);
     }, 1500);
   });
 
