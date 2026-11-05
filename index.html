@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lot 7 Parking Prototype</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="statusbar"><span id="sbTime">9:41</span><span class="sb-right" id="sbSignal">5G ▮▮▮</span></div>
+    <div class="notif" id="notif" hidden>
+      <div class="notif-app">MESSAGES · Lot 7</div>
+      <div class="notif-text" id="notifText"></div>
+    </div>
+    <header class="topbar">
+      <button class="brand" id="brand" type="button" aria-label="Lot 7 home">
+        <span class="psign">P</span><span class="brand-name">Lot 7 · Self-park</span>
+      </button>
+      <button class="msgbtn" type="button" data-action="messages" aria-label="Messages">
+        <span>Texts</span><span class="badge" id="msgBadge" hidden>0</span>
+      </button>
+    </header>
+    <main class="screen" id="screen" tabindex="-1"></main>
+    <div class="proto-tag">Prototype · no real payments</div>
+  </div>
+
+  <aside class="wizard" id="wizard" aria-label="Wizard controls">
+    <div class="wiz-head">
+      <strong>Wizard controls</strong>
+      <button type="button" class="wiz-close" data-wiz="hide" aria-label="Hide wizard">×</button>
+    </div>
+    <p class="wiz-note">Hidden from participants. Press <kbd>W</kbd> or triple-tap the logo to show or hide.</p>
+    <div class="wiz-clock">Simulated time: <b id="wizTime">–</b><br><span id="wizSession">No active session</span></div>
+
+    <div class="wiz-group"><span>Setup</span>
+      <button type="button" data-wiz="reset">Reset demo</button>
+      <button type="button" data-wiz="returning">Make a returning user</button>
+    </div>
+    <div class="wiz-group"><span>Camera (fake)</span>
+      <button type="button" data-wiz="scan">Plate scan succeeds</button>
+      <button type="button" data-wiz="autoEnter">AUTO: car enters lot</button>
+      <button type="button" data-wiz="autoLeave">AUTO: car leaves lot</button>
+    </div>
+    <div class="wiz-group"><span>Clock</span>
+      <button type="button" data-wiz="t15">+15 min</button>
+      <button type="button" data-wiz="t105">Jump to 1 h 45 m</button>
+      <button type="button" data-wiz="t130">Jump to 2 h 10 m</button>
+      <button type="button" data-wiz="t310">Jump to 5 h 10 m</button>
+    </div>
+    <div class="wiz-group"><span>Conditions</span>
+      <label class="wiz-check"><input type="checkbox" id="wizSignal"> Weak cell signal</label>
+    </div>
+  </aside>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
