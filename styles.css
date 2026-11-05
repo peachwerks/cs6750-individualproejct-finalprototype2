@@ -239,3 +239,12 @@ kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; 
 .bm-text { display: flex; flex-direction: column; min-width: 0; }
 .bm-title { font-size: 17px; }
 .bm-sub { font-size: 13px; color: #8e8e93; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Registration screen: no status bar, plain black free-until heading */
+.phone.reg-screen .statusbar { display: none; }
+.free.reg { background: none; border: 0; padding: 0; border-radius: 0; }
+.free.reg .lbl { text-transform: none; letter-spacing: 0; font-size: 17px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.free.reg .time { color: var(--ink); }
+.free.reg .rates { color: var(--ink); }
+/* On a real phone, keep the header clear of the notch when the status bar is hidden */
+@media (max-width: 760px) { .phone.reg-screen .topbar { padding-top: max(8px, env(safe-area-inset-top)); } }
