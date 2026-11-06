@@ -21,9 +21,13 @@
   // returning.html sets <body data-start="returning">: always open on the "Welcome back" screen
   var START = document.body.getAttribute("data-start") ||
     (/\/returning(\.html)?\/?$/.test(location.pathname) || location.hash === "#returning" ? "returning" : "");
+  // On returning.html the returning driver has plate ABC1234 and AUTO turned off
+  function returningProfile() {
+    return START === "returning" ? Object.assign({}, DEMO, { plate: "ABC1234", auto: false }) : Object.assign({}, DEMO);
+  }
   function applyStart() {
     if (START !== "returning") return;
-    state.profile = Object.assign({}, DEMO); state.session = null; state.screen = "register";
+    state.profile = returningProfile(); state.session = null; state.screen = "register";
   }
   applyStart();
   var draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false };
@@ -496,7 +500,7 @@
         state.profile = null; state.session = null; errors = {};
         draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false };
         $("notif").hidden = true; go("register"); break;
-      case "returning": state.profile = Object.assign({}, DEMO); state.session = null; $("notif").hidden = true; go("register"); break;
+      case "returning": state.profile = returningProfile(); state.session = null; $("notif").hidden = true; go("register"); break;
       case "lock":
         var lp = Object.assign({}, state.profile || DEMO, { auto: true });
         state.profile = lp; startSession(lp); state.session.viaAuto = true; state.lockSince = now(); state.lockCount = state.messages.length; state.lockNext = "confirm";
