@@ -316,7 +316,46 @@
       '<p class="ios-foot">Tap a bookmark to open it.</p>';
   }
 
-  var views = { bookmarks: viewBookmarks, lock: viewLock, bookmark: viewBookmark, register: viewRegister, confirm: viewConfirm, pay: viewPay, done: viewDone, auto: viewAuto, messages: viewMessages };
+
+  // Generic iPhone home screen (no app open). Messages and Safari can be tapped.
+  function viewHome() {
+    var g = function (inner, vb) { return '<svg viewBox="' + (vb || "0 0 24 24") + '" width="34" height="34" aria-hidden="true">' + inner + '</svg>'; };
+    var W = 'fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+    var day = new Date(now());
+    var apps = [
+      { n: "Calendar", bg: "#fff", ic: '<div class="hs-cal"><span>' + day.toLocaleDateString([], { weekday: "short" }).toUpperCase() + '</span><b>' + day.getDate() + '</b></div>' },
+      { n: "Photos", bg: "#fff", ic: g('<circle cx="12" cy="7" r="3.2" fill="#ff9f0a" opacity=".85"/><circle cx="17" cy="12" r="3.2" fill="#34c759" opacity=".85"/><circle cx="12" cy="17" r="3.2" fill="#0a84ff" opacity=".85"/><circle cx="7" cy="12" r="3.2" fill="#ff375f" opacity=".85"/>') },
+      { n: "Camera", bg: "linear-gradient(#d1d1d6,#8e8e93)", ic: g('<path ' + W.replace("#fff", "#1c1c1e") + ' d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5" ' + W.replace("#fff", "#1c1c1e") + '/>') },
+      { n: "Weather", bg: "linear-gradient(#4aa3ff,#1c63d6)", ic: g('<circle cx="10" cy="10" r="4" fill="#ffd60a"/><path d="M8 18h9a3 3 0 0 0 0-6 4 4 0 0 0-7.5 1A2.5 2.5 0 0 0 8 18z" fill="#fff"/>') },
+      { n: "Clock", bg: "#1c1c1e", ic: g('<circle cx="12" cy="12" r="8.5" fill="#fff"/><path d="M12 7v5l3.5 2" stroke="#1c1c1e" stroke-width="1.8" stroke-linecap="round" fill="none"/>') },
+      { n: "Maps", bg: "linear-gradient(135deg,#a8e063,#56ab2f)", ic: g('<path d="M4 18L20 6" stroke="#fff" stroke-width="3"/><path d="M14 4l3 3-3 3" ' + W + '/><circle cx="8" cy="9" r="2.5" fill="#ff3b30"/>') },
+      { n: "Notes", bg: "linear-gradient(#ffe169,#ffcc00)", ic: g('<rect x="5" y="4" width="14" height="16" rx="2" fill="#fff"/><path d="M8 9h8M8 12h8M8 15h5" stroke="#c7c7cc" stroke-width="1.4"/>') },
+      { n: "Reminders", bg: "#fff", ic: g('<circle cx="7" cy="7" r="2" fill="#0a84ff"/><circle cx="7" cy="12" r="2" fill="#ff3b30"/><circle cx="7" cy="17" r="2" fill="#ff9f0a"/><path d="M11 7h8M11 12h8M11 17h8" stroke="#c7c7cc" stroke-width="1.4"/>') },
+      { n: "Wallet", bg: "#1c1c1e", ic: g('<rect x="4" y="6" width="16" height="4" rx="1" fill="#34c759"/><rect x="4" y="9" width="16" height="4" rx="1" fill="#ff9f0a"/><rect x="4" y="12" width="16" height="7" rx="1.5" fill="#0a84ff"/>') },
+      { n: "Files", bg: "#fff", ic: g('<path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#1e90ff"/>') },
+      { n: "Contacts", bg: "linear-gradient(#e5e5ea,#c7c7cc)", ic: g('<circle cx="12" cy="9" r="3.5" fill="#8e8e93"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0z" fill="#8e8e93"/>') },
+      { n: "Settings", bg: "linear-gradient(#aeaeb2,#636366)", ic: g('<circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="2.2 1.6"/><circle cx="12" cy="12" r="3" fill="#fff"/>') }
+    ];
+    var dock = [
+      { n: "Phone", bg: "linear-gradient(#67f27d,#20c43b)", ic: g('<path d="M7 4l3 3-2 2a11 11 0 0 0 7 7l2-2 3 3-2 3C10 20 4 14 4 6z" fill="#fff"/>') },
+      { n: "Safari", bg: "#fff", act: "homeSafari", ic: g('<circle cx="12" cy="12" r="9" fill="#0a84ff"/><path d="M16 8l-2.5 5.5L8 16l2.5-5.5z" fill="#fff"/><path d="M16 8l-5.5 2.5L13.5 13.5z" fill="#ff3b30"/>') },
+      { n: "Messages", bg: "linear-gradient(#67f27d,#20c43b)", act: "homeMessages", ic: g('<path fill="#fff" d="M12 3.5c-5 0-9 3.3-9 7.4 0 2.3 1.3 4.4 3.3 5.8-.2 1.3-.8 2.5-1.8 3.4 1.9 0 3.6-.7 4.8-1.8.9.2 1.8.3 2.7.3 5 0 9-3.3 9-7.4S17 3.5 12 3.5z"/>') },
+      { n: "Mail", bg: "linear-gradient(#5ac8fa,#0a84ff)", ic: g('<rect x="3.5" y="6" width="17" height="12" rx="2" fill="#fff"/><path d="M4 7l8 6 8-6" stroke="#0a84ff" stroke-width="1.6" fill="none"/>') }
+    ];
+    var tile = function (a, label) {
+      var tag = a.act ? 'button type="button" data-action="' + a.act + '"' : 'div';
+      var end = a.act ? 'button' : 'div';
+      return '<' + tag + ' class="hs-app" aria-label="' + a.n + '"><span class="hs-icon" style="background:' + a.bg + '">' + a.ic + '</span>' +
+        (label ? '<span class="hs-label">' + a.n + '</span>' : '') + '</' + end + '>';
+    };
+    return '<div class="home">' +
+      '<div class="hs-grid">' + apps.map(function (a) { return tile(a, true); }).join("") + '</div>' +
+      '<div class="hs-search" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</div>' +
+      '<div class="hs-dock">' + dock.map(function (a) { return tile(a, false); }).join("") + '</div>' +
+      '<div class="home-bar" aria-hidden="true"></div></div>';
+  }
+
+  var views = { home: viewHome, bookmarks: viewBookmarks, lock: viewLock, bookmark: viewBookmark, register: viewRegister, confirm: viewConfirm, pay: viewPay, done: viewDone, auto: viewAuto, messages: viewMessages };
   var prev = "register";
 
   function render() {
@@ -324,7 +363,8 @@
     var sheet = state.screen === "bookmark" || state.screen === "bookmarks";
     $("phone").classList.toggle("msg-app", state.screen === "messages" || sheet);
     $("phone").classList.toggle("sheet-app", sheet);
-    $("phone").classList.toggle("lock-app", state.screen === "lock");
+    $("phone").classList.toggle("lock-app", state.screen === "lock" || state.screen === "home");
+    $("phone").classList.toggle("home-app", state.screen === "home");
     $("phone").classList.toggle("reg-screen", state.screen === "register");
     renderChrome();
   }
@@ -433,6 +473,8 @@
         case "calendar": toast("Reminder added for " + fmt(freeUntil(state.session.start) - REMIND_BEFORE * 60000)); break;
         case "bookmark": prev = state.screen; go("bookmark"); break;
         case "lockOpen": openMessages(); break;
+        case "homeMessages": prev = state.session ? "confirm" : "register"; state.unread = 0; go("messages"); break;
+        case "homeSafari": wizard("bmNew"); break;
         case "openBookmark": wizard(state.bmTarget === "returning" ? "returning" : "arriveNew"); break;
         case "saveBookmark": go(prev); toast("Added to Favorites"); break;
         case "end": confirmEnd = true; render(); break;
@@ -490,6 +532,7 @@
         state = fresh(); base = Date.now(); applyStart();
         draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false }; errors = {};
         render(); break;
+      case "home": $("notif").hidden = true; go("home"); break;
       case "bmNew":
       case "bmReturning":
         state.bmTarget = cmd === "bmNew" ? "new" : "returning";
