@@ -248,3 +248,10 @@ kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; 
 .free.reg .rates { color: var(--ink); }
 /* On a real phone, keep the header clear of the notch when the status bar is hidden */
 @media (max-width: 760px) { .phone.reg-screen .topbar { padding-top: max(8px, env(safe-area-inset-top)); } }
+.proto-tag .restart { pointer-events: auto; background: none; border: 0; padding: 0; font: inherit; color: var(--blue); text-decoration: underline; cursor: pointer; }
+
+/* License plates in Courier New: the entry field and the plate shown after registering */
+#plate, .plate { font-family: "Courier New", Courier, monospace; }
+#plate { font-weight: 700; letter-spacing: .08em; }
+#plate::placeholder { font-weight: 400; letter-spacing: .04em; }
+.plate { font-weight: 700; letter-spacing: .06em; }
