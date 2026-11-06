@@ -533,6 +533,12 @@
         draft = { plate: "", state: "GA", name: "", contactType: "phone", contact: "", remember: true, auto: false }; errors = {};
         render(); break;
       case "home": $("notif").hidden = true; go("home"); break;
+      case "lockScreen":
+        // Empty lock screen: no notifications until a new text arrives
+        $("notif").hidden = true;
+        state.lockSince = now(); state.lockCount = state.messages.length;
+        state.lockNext = state.session ? "confirm" : "register";
+        go("lock"); break;
       case "bmNew":
       case "bmReturning":
         state.bmTarget = cmd === "bmNew" ? "new" : "returning";
